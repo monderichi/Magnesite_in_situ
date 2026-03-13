@@ -56,27 +56,3 @@ By default, the script connects to `/dev/ttyACM0` at `115200` baud. If your devi
 
 If you encounter permission issues connecting to the serial port, the script will attempt to adjust permissions automatically, but you may need to add your user to the `dialout` group as prompted.
 
-## Executing Motion Plans
-
-Once either the simulation or the real robot environment is active, you can monitor the robot and send trajectory commands in a separate terminal. 
-
-Ensure to source the workspace in any new terminal before running nodes:
-```bash
-source /opt/ros/humble/setup.bash
-source install/setup.bash
-```
-
-To send the robot to its predefined designated home position:
-```bash
-ros2 run spraying_pathways go_home_node
-```
-
-To execute the Cartesian path planner trajectory pattern:
-```bash
-ros2 run spraying_pathways cartesian_path_planner_trajectory_v1_mycobot320_node
-```
-
-You can view live joint states published by the system with:
-```bash
-ros2 topic echo /joint_states
-```
