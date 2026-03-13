@@ -15,6 +15,7 @@ find_package(moveit_ros_planning REQUIRED)
 find_package(srdfdom REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(urdf REQUIRED)
 find_package(gazebo_ros REQUIRED)
@@ -344,6 +345,7 @@ install(PROGRAMS
   scripts/obstacles_tracking.py
   scripts/test_mycobot_setup.sh
   scripts/mycobot_driver.py
+  scripts/spray_valve_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

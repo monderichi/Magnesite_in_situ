@@ -209,10 +209,23 @@ def launch_setup(context, *args, **kwargs):
         condition=IfCondition(use_rviz)
     )
 
+    # Spray Valve controller node (Python)
+    spray_valve_node = Node(
+        package="spraying_pathways",
+        executable="spray_valve_node.py",
+        name="spray_valve_controller",
+        output="screen",
+        parameters=[{
+            "port": LaunchConfiguration("spray_port"),
+            "baud": LaunchConfiguration("spray_baud"),
+        }],
+    )
+
     # Startup sequence
     log_starting_driver = LogInfo(msg="[Launch] Starting myCobot 320 driver...")
     log_starting_moveit = LogInfo(msg="[Launch] Starting MoveIt...")
     log_starting_rviz = LogInfo(msg="[Launch] Starting RViz...")
+    log_starting_valve = LogInfo(msg="[Launch] Starting Spray Valve controller...")
 
     delay_moveit = TimerAction(
         period=5.0,
@@ -226,8 +239,10 @@ def launch_setup(context, *args, **kwargs):
 
     return [
         log_starting_driver,
+        log_starting_valve,
         robot_state_publisher_node,
         mycobot_driver_node,
+        spray_valve_node,
         delay_moveit,
         delay_rviz,
     ]
@@ -243,5 +258,7 @@ def generate_launch_description():
         DeclareLaunchArgument("prefix", default_value="\"\"", description="Joint name prefix"),
         DeclareLaunchArgument("moveit_config_package", default_value="spraying_pathways", description="MoveIt config package"),
         DeclareLaunchArgument("use_rviz", default_value="true", description="Launch RViz for visualization"),
+        DeclareLaunchArgument("spray_port", default_value="/dev/ttyACM1", description="Serial port for the spray valve Arduino"),
+        DeclareLaunchArgument("spray_baud", default_value="115200", description="Baud rate for the spray valve Arduino"),
         OpaqueFunction(function=launch_setup),
     ])

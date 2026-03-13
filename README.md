@@ -56,3 +56,31 @@ By default, the script connects to `/dev/ttyACM0` at `115200` baud. If your devi
 
 If you encounter permission issues connecting to the serial port, the script will attempt to adjust permissions automatically, but you may need to add your user to the `dialout` group as prompted.
 
+### 3. Spray Valve Integration
+
+The project includes integration with an Arduino-controlled spray valve. The Arduino should be connected via USB and listen for '1' to open and '0' to close over Serial (115200 baud).
+
+The `spray_valve_node.py` is automatically launched with the real robot. It exposes a ROS 2 topic and service to control the valve.
+
+**Setup permissions:**
+Make sure the serial port has the correct permissions (e.g. `/dev/ttyACM0`):
+```bash
+sudo chmod 666 /dev/ttyACM0
+```
+
+**Usage:**
+Once the real robot (or the standalone `spray_valve.launch.py`) is running, you can control the valve from a sourced terminal:
+
+*   **Open the valve:**
+    ```bash
+    ros2 topic pub --once /spray_valve std_msgs/msg/Bool "{data: true}"
+    ```
+*   **Close the valve:**
+    ```bash
+    ros2 topic pub --once /spray_valve std_msgs/msg/Bool "{data: false}"
+    ```
+*   **Toggle the valve state automatically:**
+    ```bash
+    ros2 service call /toggle_spray_valve std_srvs/srv/Trigger
+    ```
+
