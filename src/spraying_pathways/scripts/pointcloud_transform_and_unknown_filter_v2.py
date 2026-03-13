@@ -1,0 +1,649 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+import math
+import xml.etree.ElementTree as ET
+import numpy as np
+
+import rclpy
+from rclpy.node import Node
+from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.logging import LoggingSeverity
+
+from sensor_msgs.msg import PointCloud2
+import sensor_msgs_py.point_cloud2 as pc2
+
+from visualization_msgs.msg import Marker, MarkerArray
+
+from rcl_interfaces.srv import GetParameters
+import tf2_ros
+
+from tf_transformations import (
+    quaternion_from_euler,
+    euler_matrix,
+    quaternion_multiply,
+    quaternion_matrix,
+)
+
+from urdf_parser_py.urdf import URDF
+from urdf_parser_py.urdf import Box, Cylinder, Sphere, Mesh
+
+# optional auto-measure via numpy-stl
+try:
+    from stl import mesh as stlmesh
+except ImportError:
+    stlmesh = None
+
+
+def parse_pose(pose_text):
+    values = list(map(float, pose_text.strip().split()))
+    pos = values[0:3]
+    rpy = values[3:6] if len(values) == 6 else [0.0, 0.0, 0.0]
+    return pos, rpy
+
+
+def rotate_and_translate(world_pos, world_rpy, local_pos):
+    rot = euler_matrix(*world_rpy)[:3, :3]
+    rotated = rot @ np.array(local_pos)
+    translated = np.array(world_pos) + rotated
+    return translated.tolist()
+
+
+def combine_pose(world_pos, world_rpy, local_pos, local_rpy):
+    position = rotate_and_translate(world_pos, world_rpy, local_pos)
+    total_rpy = [w + l for w, l in zip(world_rpy, local_rpy)]
+    quat = quaternion_from_euler(*total_rpy)
+    return position, quat
+
+
+class CombinedPipelineNode(Node):
+    """
+    Sub:  /depth_camera/points
+    Pub:  /camera_all_points, /work_surface_points, /unknown_points
+          /known_objects_markers, /robot_objects_markers
+    """
+
+    def __init__(self, world_file):
+        super().__init__("pointcloud_transform_and_unknown_filter_node")
+
+        # ── Publishers (created early, OK) ──
+        self.pub_camera_all = self.create_publisher(PointCloud2, "/camera_all_points", 10)
+        self.pub_work_surface = self.create_publisher(PointCloud2, "/work_surface_points", 10)
+        self.known_pub = self.create_publisher(MarkerArray, "/known_objects_markers", 10)
+        self.unknown_pub = self.create_publisher(PointCloud2, "/unknown_points", 10)
+        self.robot_marker_pub = self.create_publisher(MarkerArray, "/robot_objects_markers", 10)
+
+        self.get_logger().info("Initialized pointcloud_transform_and_unknown_filter_node")
+
+        # ── Precompute transforms (needed before any callback runs) ──
+        theta_y = math.radians(90)
+        R_y = np.array([[math.cos(theta_y), 0, math.sin(theta_y)],
+                        [0, 1, 0],
+                        [-math.sin(theta_y), 0, math.cos(theta_y)]], dtype=np.float32)
+        theta_x = math.radians(-90)
+        R_x = np.array([[1, 0, 0],
+                        [0, math.cos(theta_x), -math.sin(theta_x)],
+                        [0, math.sin(theta_x),  math.cos(theta_x)]], dtype=np.float32)
+        self.R_initial = R_x @ R_y
+
+        self.R_custom = np.array([[0, 0, 1],
+                                  [0, 1, 0],
+                                  [-1, 0, 0]], dtype=np.float32)
+
+        self.translation = np.array([0.75, 0.2, 1.5], dtype=np.float32)
+
+        # Throttle logs in the hot path
+        try:
+            self.get_logger().set_level(LoggingSeverity.WARN)
+        except Exception:
+            pass
+        self._log_every = 20
+        self._cb_count = 0
+
+        # Offset (as before)
+        self.position_offset = np.array([-0.25, 0.0, -0.715], dtype=np.float32)
+
+        # Known objects from world
+        self.known_objects = []
+        self.parse_and_store_known_objects(world_file)
+        self.create_timer(2.0, self.publish_known_markers)
+
+        # TF buffer/listener
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+
+        # Robot collisions from URDF (this spins to fetch parameter)
+        self.robot_collisions = []
+        self.load_robot_collision_geometry_from_robot_description()
+
+        # Markers & cache for faster filtering
+        self._last_robot_objs = []
+        self.create_timer(0.2, self.publish_robot_markers)  # 5 Hz
+
+        self.eps_scale = 1e-3
+
+        # ── Subscriber: LAST ──
+        # Create it last so that, if spin happens above, the callback doesn’t run early.
+        self.subscription_raw = self.create_subscription(
+            PointCloud2, "/depth_camera/points", self.depth_pointcloud_callback, 10
+        )
+
+    # =========================
+    #  World / Known objects
+    # =========================
+    def parse_and_store_known_objects(self, world_file):
+        try:
+            tree = ET.parse(world_file)
+        except Exception as e:
+            self.get_logger().error(f"Failed to parse world file: {e}")
+            return
+
+        root = tree.getroot()
+        includes = root.findall(".//include")
+        models = []
+
+        for inc in includes:
+            uri = inc.find("uri")
+            pose_tag = inc.find("pose")
+            if uri is None or not uri.text.startswith("file://"):
+                continue
+            path = uri.text.replace("file://", "")
+            model_path = os.path.join(path, "model.sdf") if os.path.isdir(path) else path
+            if not os.path.exists(model_path):
+                self.get_logger().warn(f"Model not found: {model_path}")
+                continue
+            pos, rpy = parse_pose(pose_tag.text) if pose_tag is not None else ([0, 0, 0], [0, 0, 0])
+            models.append({"model_path": model_path, "pose": pos, "rpy": rpy})
+
+        for model in models:
+            try:
+                tree = ET.parse(model["model_path"])
+                root = tree.getroot()
+                model_elem = root.find(".//model")
+                model_name = model_elem.get("name", "unknown")
+            except Exception as e:
+                self.get_logger().warn(f"Could not parse {model['model_path']}: {e}")
+                continue
+
+            for col in root.findall(".//collision"):
+                name = col.get("name", "part")
+                pose_tag = col.find("pose")
+                local_pos, local_rpy = parse_pose(pose_tag.text) if pose_tag is not None else ([0, 0, 0], [0, 0, 0])
+                global_pos, quat = combine_pose(model["pose"], model["rpy"], local_pos, local_rpy)
+
+                geom = col.find("geometry")
+                if geom is None:
+                    continue
+
+                if geom.find("box") is not None:
+                    size = list(map(float, geom.find("box/size").text.strip().split()))
+                    shape = "box"
+                elif geom.find("cylinder") is not None:
+                    radius = float(geom.find("cylinder/radius").text)
+                    height = float(geom.find("cylinder/length").text)
+                    size = [radius, height]
+                    shape = "cylinder"
+                else:
+                    continue
+
+                self.known_objects.append(
+                    {
+                        "id": f"{model_name}::{name}",
+                        "shape": shape,
+                        "size": size,
+                        "position": global_pos,
+                        "orientation": quat,
+                    }
+                )
+
+        self.get_logger().info(f"Stored {len(self.known_objects)} known collision objects.")
+
+    def publish_known_markers(self):
+        padding = 0.001
+        if not self.known_objects:
+            return
+
+        marker_array = MarkerArray()
+        for i, obj in enumerate(self.known_objects):
+            marker = Marker()
+            marker.header.frame_id = "world"
+            marker.header.stamp = self.get_clock().now().to_msg()
+            marker.ns = "known_objs"
+            marker.id = i
+            marker.action = Marker.ADD
+
+            pos = np.array(obj["position"], dtype=np.float32) + self.position_offset
+            marker.pose.position.x, marker.pose.position.y, marker.pose.position.z = pos.tolist()
+
+            qx, qy, qz, qw = obj["orientation"]
+            marker.pose.orientation.x = qx
+            marker.pose.orientation.y = qy
+            marker.pose.orientation.z = qz
+            marker.pose.orientation.w = qw
+
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.color.a = 0.6
+
+            if obj["shape"] == "box":
+                marker.type = Marker.CUBE
+                marker.scale.x = obj["size"][0] + padding * 2
+                marker.scale.y = obj["size"][1] + padding * 2
+                marker.scale.z = obj["size"][2] + padding * 2
+            elif obj["shape"] == "cylinder":
+                marker.type = Marker.CYLINDER
+                marker.scale.x = marker.scale.y = (obj["size"][0] + padding) * 2
+                marker.scale.z = obj["size"][1] + padding * 2
+
+            marker_array.markers.append(marker)
+
+        self.known_pub.publish(marker_array)
+
+    # =========================
+    #  Robot from URDF / TF
+    # =========================
+    def get_robot_description_xml(self):
+        client = self.create_client(GetParameters, "/robot_state_publisher/get_parameters")
+        if not client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().warn("get_parameters not available; cannot fetch /robot_description")
+            return None
+        req = GetParameters.Request()
+        req.names = ["robot_description"]
+        fut = client.call_async(req)
+        rclpy.spin_until_future_complete(self, fut)
+        if not fut.result() or not fut.result().values:
+            self.get_logger().warn("Empty /robot_description")
+            return None
+        return fut.result().values[0].string_value
+
+    def _aabb_from_mesh(self, filename, scale_xyz):
+        if stlmesh is None:
+            self.get_logger().warn("numpy-stl not installed; cannot auto-measure mesh AABB.")
+            return None, None
+        path = filename.replace("file://", "")
+        if not path.lower().endswith(".stl"):
+            self.get_logger().warn(f"Non-STL mesh '{path}' — skipping AABB")
+            return None, None
+        try:
+            m = stlmesh.Mesh.from_file(path, calculate_normals=False, speedups=True)
+            pts = m.vectors.reshape(-1, 3)
+            pts = pts[np.isfinite(pts).all(axis=1)]
+            if pts.size == 0:
+                self.get_logger().warn(f"Mesh has no valid vertices: {path}")
+                return None, None
+
+            min_xyz = pts.min(axis=0).astype(float)
+            max_xyz = pts.max(axis=0).astype(float)
+            extents = (max_xyz - min_xyz)
+            center = (min_xyz + max_xyz) * 0.5
+
+            s = np.array(scale_xyz if scale_xyz is not None else [1.0, 1.0, 1.0], dtype=float)
+            size = (extents * s).tolist()
+            center = (center * s).tolist()
+
+            eps = 1e-4
+            size = [max(eps, float(v)) for v in size]
+            return size, center
+        except Exception as e:
+            self.get_logger().warn(f"Failed AABB for {path}: {e}")
+            return None, None
+
+    def load_robot_collision_geometry_from_robot_description(self):
+        xml = self.get_robot_description_xml()
+        if not xml:
+            self.get_logger().warn("Robot URDF not found; robot will NOT be filtered.")
+            return
+        try:
+            urdf = URDF.from_xml_string(xml)
+        except Exception as e:
+            self.get_logger().error(f"Failed to parse URDF: {e}")
+            return
+
+        count = 0
+        for link in urdf.links:
+            if link.name == "ground_plane":
+                self.get_logger().info("[URDF] Skipping collisions for link 'ground_plane'")
+                continue
+
+            if not link.collisions:
+                continue
+            for coll in link.collisions:
+                xyz = coll.origin.xyz if coll.origin else [0.0, 0.0, 0.0]
+                rpy = coll.origin.rpy if coll.origin else [0.0, 0.0, 0.0]
+                g = coll.geometry
+
+                if isinstance(g, Box):
+                    size = list(g.size)
+                    self.robot_collisions.append(
+                        {"link": link.name, "shape": "box", "size": size, "local_pos": xyz, "local_rpy": rpy}
+                    )
+                    count += 1
+
+                elif isinstance(g, Cylinder):
+                    r = float(g.radius)
+                    h = float(g.length)
+                    self.robot_collisions.append(
+                        {"link": link.name, "shape": "cylinder", "size": [r, h], "local_pos": xyz, "local_rpy": rpy}
+                    )
+                    count += 1
+
+                elif isinstance(g, Sphere):
+                    r = float(g.radius)
+                    self.robot_collisions.append(
+                        {"link": link.name, "shape": "sphere", "size": [r], "local_pos": xyz, "local_rpy": rpy}
+                    )
+                    count += 1
+
+                elif isinstance(g, Mesh):
+                    scale = list(g.scale) if g.scale is not None else [1.0, 1.0, 1.0]
+                    size, center = self._aabb_from_mesh(g.filename, scale)
+                    if size:
+                        R_local = euler_matrix(*(rpy if rpy else [0.0, 0.0, 0.0]))[:3, :3]
+                        xyz_np = np.array(xyz, dtype=float)
+                        cen_np = np.array(center, dtype=float)
+                        local_pos_adj = (xyz_np + R_local @ cen_np).tolist()
+
+                        self.robot_collisions.append(
+                            {
+                                "link": link.name,
+                                "shape": "box",
+                                "size": size,
+                                "local_pos": local_pos_adj,
+                                "local_rpy": rpy,
+                            }
+                        )
+                        count += 1
+
+        self.get_logger().info(f"Loaded {count} robot collision primitives from URDF.")
+
+    def get_link_world_pose(self, link_name):
+        try:
+            t = self.tf_buffer.lookup_transform("world", link_name, rclpy.time.Time(),
+                                                timeout=Duration(seconds=0.0))
+        except Exception:
+            return None, None
+        trans = np.array(
+            [t.transform.translation.x, t.transform.translation.y, t.transform.translation.z], dtype=np.float32
+        )
+        quat = np.array(
+            [t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w],
+            dtype=np.float32,
+        )
+        return trans, quat
+
+    def compute_robot_objects_world(self):
+        objs = []
+        for rc in self.robot_collisions:
+            trans, quat = self.get_link_world_pose(rc["link"])
+            if trans is None:
+                continue
+            R_world = quaternion_matrix(quat)[:3, :3]
+            local_pos = np.array(rc["local_pos"], dtype=np.float32)
+
+            local_quat = np.array(quaternion_from_euler(*rc["local_rpy"]), dtype=np.float32)
+            world_quat = np.array(quaternion_multiply(quat, local_quat), dtype=np.float32)
+
+            world_pos = trans + R_world @ local_pos
+            objs.append(
+                {
+                    "id": f"robot::{rc['link']}",
+                    "shape": rc["shape"],
+                    "size": rc["size"],
+                    "position": world_pos.tolist(),
+                    "orientation": world_quat.tolist(),
+                }
+            )
+        return objs
+
+    def publish_robot_markers(self):
+        robot_objs = self.compute_robot_objects_world()
+        if not robot_objs:
+            return
+        self._last_robot_objs = robot_objs  # cache
+
+        ma = MarkerArray()
+        now = self.get_clock().now().to_msg()
+        for i, obj in enumerate(robot_objs):
+            m = Marker()
+            m.header.frame_id = "world"
+            m.header.stamp = now
+            m.ns = "robot_objs"
+            m.id = i
+            m.action = Marker.ADD
+            m.pose.position.x, m.pose.position.y, m.pose.position.z = obj["position"]
+            qx, qy, qz, qw = obj["orientation"]
+            m.pose.orientation.x = qx
+            m.pose.orientation.y = qy
+            m.pose.orientation.z = qz
+            m.pose.orientation.w = qw
+            m.color.r = 0.0
+            m.color.g = 0.2
+            m.color.b = 1.0
+            m.color.a = 0.6
+            if obj["shape"] == "box":
+                m.type = Marker.CUBE
+                sx, sy, sz = obj["size"]
+                m.scale.x = max(self.eps_scale, sx)
+                m.scale.y = max(self.eps_scale, sy)
+                m.scale.z = max(self.eps_scale, sz)
+            elif obj["shape"] == "cylinder":
+                m.type = Marker.CYLINDER
+                r, h = obj["size"]
+                m.scale.x = m.scale.y = max(self.eps_scale, 2.0 * r)
+                m.scale.z = max(self.eps_scale, h)
+            elif obj["shape"] == "sphere":
+                m.type = Marker.SPHERE
+                r = obj["size"][0]
+                d = max(self.eps_scale, 2.0 * r)
+                m.scale.x = m.scale.y = m.scale.z = d
+            else:
+                continue
+            ma.markers.append(m)
+        self.robot_marker_pub.publish(ma)
+
+    # =========================
+    #  Geometry helpers
+    # =========================
+    def quaternion_to_rotation_matrix(self, q):
+        qx, qy, qz, qw = q
+        R = np.array(
+            [
+                [1 - 2 * qy * qy - 2 * qz * qz, 2 * qx * qy - 2 * qz * qw, 2 * qx * qz + 2 * qy * qw],
+                [2 * qx * qy + 2 * qz * qw, 1 - 2 * qx * qx - 2 * qz * qz, 2 * qy * qz - 2 * qx * qw],
+                [2 * qx * qz - 2 * qy * qw, 2 * qy * qz + 2 * qx * qw, 1 - 2 * qx * qx - 2 * qy * qy],
+            ],
+            dtype=np.float32,
+        )
+        return R
+
+    # =========================
+    #  Filters
+    # =========================
+    def remove_known(self, points):
+        padding = 0.015
+        if points.size == 0:
+            return points
+        mask = np.ones(len(points), dtype=bool)
+
+        for obj in self.known_objects:
+            pos = np.array(obj["position"], dtype=np.float32) + self.position_offset
+            q = obj["orientation"]
+            R_inv = self.quaternion_to_rotation_matrix(q).T
+
+            if obj["shape"] == "box":
+                dx, dy, dz = obj["size"]
+                dx += padding * 2
+                dy += padding * 2
+                dz += padding * 2
+            elif obj["shape"] == "cylinder":
+                r, h = obj["size"]
+                r += padding
+                dx = dy = r * 2
+                dz = h + padding * 2
+            else:
+                continue
+
+            pts_local_rot = (points - pos) @ R_inv
+
+            in_box = (
+                (pts_local_rot[:, 0] >= -dx / 2)
+                & (pts_local_rot[:, 0] <= dx / 2)
+                & (pts_local_rot[:, 1] >= -dy / 2)
+                & (pts_local_rot[:, 1] <= dy / 2)
+                & (pts_local_rot[:, 2] >= -dz / 2)
+                & (pts_local_rot[:, 2] <= dz / 2)
+            )
+
+            mask &= ~in_box
+
+        return points[mask]
+
+    def remove_robot(self, points, robot_objs=None):
+        padding = 0.2 #0.08
+        eps = 9e-4 #5e-4
+        inflate_box = 2.8 #1.80
+        inflate_cyl_r = 3.0 #2.00
+        inflate_cyl_h = 2.8 #1.80
+        inflate_sphere = 2.8 #1.80
+
+        if points.size == 0:
+            return points
+
+        if robot_objs is None:
+            robot_objs = self._last_robot_objs
+        if not robot_objs:
+            return points
+
+        mask = np.ones(len(points), dtype=bool)
+        for obj in robot_objs:
+            pos = np.array(obj["position"], dtype=np.float32)
+            q = obj["orientation"]
+            R_inv = self.quaternion_to_rotation_matrix(q).T
+            pts_local_rot = (points - pos) @ R_inv
+
+            if obj["shape"] == "box":
+                dx, dy, dz = np.array(obj["size"], dtype=np.float64) * inflate_box
+                dx += padding * 2
+                dy += padding * 2
+                dz += padding * 2
+                in_shape = (
+                    (np.abs(pts_local_rot[:, 0]) <= dx / 2 + eps)
+                    & (np.abs(pts_local_rot[:, 1]) <= dy / 2 + eps)
+                    & (np.abs(pts_local_rot[:, 2]) <= dz / 2 + eps)
+                )
+            elif obj["shape"] == "cylinder":
+                r, h = obj["size"]
+                r = r * inflate_cyl_r + padding
+                hz = (h * inflate_cyl_h) / 2.0 + padding
+                rho2 = pts_local_rot[:, 0] ** 2 + pts_local_rot[:, 1] ** 2
+                in_shape = (rho2 <= (r + eps) ** 2) & (np.abs(pts_local_rot[:, 2]) <= hz + eps)
+            elif obj["shape"] == "sphere":
+                r = obj["size"][0] * inflate_sphere + padding
+                rr = pts_local_rot[:, 0] ** 2 + pts_local_rot[:, 1] ** 2 + pts_local_rot[:, 2] ** 2
+                in_shape = rr <= (r + eps) ** 2
+            else:
+                continue
+
+            mask &= ~in_shape
+
+        return points[mask]
+
+    def remove_ground_by_z(self, points, z_plane=None, tol=0.02):
+        if points.size == 0:
+            return points
+        if z_plane is None:
+            z_plane = float(self.position_offset[2])
+        mask = np.abs(points[:, 2] - z_plane) > tol
+        removed = int((~mask).sum())
+        if removed:
+            self.get_logger().info(f"[GROUND FILTER] removed {removed} points at z≈{z_plane}±{tol}")
+        return points[mask]
+
+    # =========================
+    #  Depth camera callback
+    # =========================
+    def depth_pointcloud_callback(self, msg):
+        # Robust NumPy read (structured or Nx3)
+        pts = None
+        try:
+            arr = pc2.read_points_numpy(msg, field_names=("x", "y", "z"))
+            arr_np = np.asarray(arr)
+            if getattr(arr_np, "dtype", None) is not None and arr_np.dtype.names:
+                pts = np.stack([arr_np["x"], arr_np["y"], arr_np["z"]], axis=1).astype(np.float32, copy=False)
+            else:
+                pts = arr_np.astype(np.float32, copy=False)
+                if pts.ndim == 1:
+                    pts = pts.reshape(-1, 3)
+        except Exception:
+            pts = None
+
+        if pts is None:
+            gen = pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True)
+            flat = np.fromiter((c for p in gen for c in p), dtype=np.float32, count=-1)
+            pts = flat.reshape(-1, 3)
+
+        if pts.size == 0:
+            return
+
+        # Unified transform
+        # optical -> camera_link
+        pts_cam  = (self.R_initial @ pts.T).T
+
+        # camera_link -> base_link  (ΠΡΩΤΑ rotate, ΜΕΤΑ add)
+        pts_base = (self.R_custom  @ pts_cam.T).T + self.translation
+
+        pts = pts_base
+
+        # Publish: all
+        hdr_all = msg.header
+        hdr_all.frame_id = "base_link"
+        self.pub_camera_all.publish(pc2.create_cloud_xyz32(hdr_all, pts.tolist()))
+
+        # Workspace clipping
+        m = (0.55 <= pts[:, 0]) & (pts[:, 0] <= 0.95) & (0.0 <= pts[:, 1]) & (pts[:, 1] <= 0.4)
+        self.pub_work_surface.publish(pc2.create_cloud_xyz32(hdr_all, pts[m].tolist() if np.any(m) else []))
+
+        # Unknown pipeline (same logic)
+        unknown_points = self.remove_known(pts)
+        unknown_points = self.remove_robot(unknown_points, self._last_robot_objs)
+        unknown_points = self.remove_ground_by_z(unknown_points, z_plane=float(self.position_offset[2]), tol=0.02)
+        self.publish_unknown_pointcloud(unknown_points, hdr_all)
+
+        # Throttled log
+        self._cb_count += 1
+        if self._cb_count % self._log_every == 0:
+            self.get_logger().info(f"PC frames: {self._cb_count} | unknown: {len(unknown_points)}")
+
+    # =========================
+    #  Publish helpers
+    # =========================
+    def publish_unknown_pointcloud(self, points, header):
+        cloud = pc2.create_cloud_xyz32(header, points.tolist() if isinstance(points, np.ndarray) else points)
+        self.unknown_pub.publish(cloud)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    if len(sys.argv) < 2:
+        print("Usage: ros2 run spraying_pathways pointcloud_transform_and_unknown_filter.py <path_to_world_file>")
+        return
+    world_file = sys.argv[1]
+    print(f"Starting pointcloud_transform_and_unknown_filter node with world file: {world_file}")
+    node = CombinedPipelineNode(world_file)
+
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+    try:
+        executor.spin()
+    finally:
+        executor.shutdown()
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

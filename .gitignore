@@ -1,0 +1,6 @@
+.agents/
+build/
+install/
+log/
+*.zip
+*.log

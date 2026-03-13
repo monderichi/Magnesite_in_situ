@@ -1,0 +1,67 @@
+# Controller configuration for REAL myCobot 320 M5 robot (NO Gazebo)
+# Compatible with spraying_pathways C++ nodes and mycobot_driver.py
+# Planning group: ur_manipulator
+
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    # Joint state broadcaster - publishes /joint_states from real robot
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # Main arm controller for trajectory execution on real hardware
+    # Uses FollowJointTrajectory action interface
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+# Joint trajectory controller configuration for real robot
+arm_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+    # State publishing
+    state_publish_rate: 100.0
+    action_monitor_rate: 20.0
+
+    # Trajectory constraints for real robot (more conservative)
+    open_loop_control: false
+    allow_integration_in_goal_trajectories: true
+    allow_nonzero_velocity_at_trajectory_end: false  # Safer for real robot
+
+    # Constraints - tighter for real robot accuracy
+    constraints:
+      stopped_velocity_tolerance: 0.05
+      goal_time: 0.5  # Allow 0.5s extra to reach goal
+      
+      shoulder_pan_joint:
+        trajectory: 0.1
+        goal: 0.05
+      shoulder_lift_joint:
+        trajectory: 0.1
+        goal: 0.05
+      elbow_joint:
+        trajectory: 0.1
+        goal: 0.05
+      wrist_1_joint:
+        trajectory: 0.1
+        goal: 0.05
+      wrist_2_joint:
+        trajectory: 0.1
+        goal: 0.05
+      wrist_3_joint:
+        trajectory: 0.1
+        goal: 0.05

@@ -1,0 +1,60 @@
+# Joint limits for MoveIt planning with myCobot 320 M5
+# These limits are used for trajectory time parameterization
+
+default_velocity_scaling_factor: 1.0
+default_acceleration_scaling_factor: 1.0
+
+joint_limits:
+  joint2_to_joint1:
+    has_velocity_limits: true
+    max_velocity: 2.792527
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+    has_position_limits: true
+    min_position: -2.93
+    max_position: 2.93
+    
+  joint3_to_joint2:
+    has_velocity_limits: true
+    max_velocity: 2.792527
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+    has_position_limits: true
+    min_position: -2.35
+    max_position: 2.35
+    
+  joint4_to_joint3:
+    has_velocity_limits: true
+    max_velocity: 2.792527
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+    has_position_limits: true
+    min_position: -2.53
+    max_position: 2.53
+    
+  joint5_to_joint4:
+    has_velocity_limits: true
+    max_velocity: 2.792527
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+    has_position_limits: true
+    min_position: -2.53
+    max_position: 2.53
+    
+  joint6_to_joint5:
+    has_velocity_limits: true
+    max_velocity: 2.792527
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+    has_position_limits: true
+    min_position: -2.93
+    max_position: 2.93
+    
+  joint6output_to_joint6:
+    has_velocity_limits: true
+    max_velocity: 2.792527
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+    has_position_limits: true
+    min_position: -3.14
+    max_position: 3.14

@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="$(arg name)">
+
+  <!-- Basic required args -->
+  <xacro:arg name="name" default="ur"/>
+  <xacro:arg name="ur_type" default="ur10e"/>
+  <xacro:arg name="prefix" default=""/>
+  <xacro:arg name="tf_prefix" default=""/>
+  <xacro:arg name="sim_gazebo" default="true"/>
+  <xacro:arg name="simulation_controllers" default="$(find ur_simulation_gazebo)/config/ur_controllers.yaml"/>
+  <xacro:arg name="initial_positions_file" default="$(find ur_description)/config/initial_positions.yaml"/>
+
+  <!-- Safety -->
+  <xacro:arg name="safety_limits" default="true"/>
+  <xacro:arg name="safety_pos_margin" default="0.15"/>
+  <xacro:arg name="safety_k_position" default="20"/>
+
+  <!-- Include main UR robot description -->
+  <xacro:include filename="$(find ur_description)/urdf/ur.urdf.xacro" />
+
+  <xacro:include filename="$(find spraying_pathways)/urdf/depth_camera.urdf.xacro" />
+  <xacro:include filename="$(find spraying_pathways)/urdf/depth_camera_ee.urdf.xacro" />
+  <!-- <xacro:include filename="$(find spraying_pathways)/urdf/2d_lidar.urdf.xacro" /> -->
+  
+  <!-- Custom sensors -->
+  <xacro:depth_camera parent_link="$(arg tf_prefix)base_link" sim_gazebo="$(arg sim_gazebo)" />
+  <xacro:depth_camera_ee parent_link="$(arg tf_prefix)wrist_3_link" sim_gazebo="$(arg sim_gazebo)" />
+  <!-- <xacro:lidar_sensor parent_link="$(arg tf_prefix)tool0" tf_prefix="$(arg tf_prefix)" sim_gazebo="$(arg sim_gazebo)" /> -->
+</robot>

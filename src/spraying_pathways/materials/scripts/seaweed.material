@@ -1,0 +1,13 @@
+material My/Seaweed
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture ../textures/seaweed.png
+      }
+    }
+  }
+}

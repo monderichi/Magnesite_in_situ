@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="mycobot_320">
+
+  <!-- Basic required args -->
+  <xacro:arg name="robot_name" default="mycobot_320"/>
+  <xacro:arg name="prefix" default=""/>
+  <xacro:arg name="add_world" default="true"/>
+  <xacro:arg name="use_gazebo" default="true"/>
+  <xacro:arg name="use_gripper" default="false"/>
+  <xacro:arg name="controllers_file" default="none"/>
+  
+  <!-- Include main myCobot 320 robot description -->
+  <xacro:include filename="$(find mycobot_description)/urdf/robots/mycobot_320.urdf.xacro" />
+  
+  <!-- Set controllers file for gazebo_ros2_control plugin -->
+  <xacro:property name="controllers_file" value="$(arg controllers_file)"/>
+
+  <!-- Custom sensors -->
+  <xacro:include filename="$(find spraying_pathways)/urdf/depth_camera.urdf.xacro" />
+  <xacro:include filename="$(find spraying_pathways)/urdf/depth_camera_ee.urdf.xacro" />
+  
+  <!-- Depth camera mounted on base/world -->
+  <xacro:depth_camera parent_link="world" sim_gazebo="$(arg use_gazebo)" />
+  
+  <!-- Depth camera mounted on end-effector (link6) -->
+  <xacro:depth_camera_ee parent_link="link6" sim_gazebo="$(arg use_gazebo)" />
+  
+</robot>

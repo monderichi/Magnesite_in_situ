@@ -1,0 +1,101 @@
+Starting >>> spraying_pathways
+--- output: spraying_pathways
+Consolidate compiler generated dependencies of target follow_joints_positions_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_trajectory_v1_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_v2_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_test_go_v2_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_test_v2_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_v4_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_test_v1_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_test_go_v1_node
+Consolidate compiler generated dependencies of target flat_fan_spraying_node
+Consolidate compiler generated dependencies of target go_home_node
+[ 21%] Built target cartesian_path_planner_cubes_test_go_v2_node
+[ 21%] Built target cartesian_path_planner_cubes_v2_node
+[ 21%] Built target follow_joints_positions_node
+[ 21%] Built target cartesian_path_planner_trajectory_v1_node
+[ 36%] Built target cartesian_path_planner_cubes_test_v2_node
+Consolidate compiler generated dependencies of target cartesian_path_planner_cubes_v3_node
+[ 36%] Built target cartesian_path_planner_cubes_test_go_v1_node
+[ 36%] Built target cartesian_path_planner_cubes_test_v1_node
+[ 47%] Built target cartesian_path_planner_cubes_v4_node
+[ 47%] Built target go_home_node
+[ 52%] Built target flat_fan_spraying_node
+[ 57%] Built target cartesian_path_planner_cubes_v3_node
+Consolidate compiler generated dependencies of target lidar_surface_scanner_node
+[ 63%] Built target lidar_surface_scanner_node
+Consolidate compiler generated dependencies of target moving_obstacle
+[ 68%] Built target moving_obstacle
+Consolidate compiler generated dependencies of target safety_stop_on_unknown_node
+Consolidate compiler generated dependencies of target flat_fan_spraying_v2_node
+Consolidate compiler generated dependencies of target inspect_flatness_node
+Consolidate compiler generated dependencies of target flat_fan_spraying_v3_node
+[ 73%] Built target safety_stop_on_unknown_node
+Consolidate compiler generated dependencies of target test_node
+Consolidate compiler generated dependencies of target flat_fan_spraying_v4_node
+[ 78%] Built target inspect_flatness_node
+[ 84%] Built target flat_fan_spraying_v2_node
+[ 94%] Built target test_node
+[ 94%] Built target flat_fan_spraying_v3_node
+[100%] Built target flat_fan_spraying_v4_node
+-- Install configuration: ""
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include/spraying_pathways
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include/spraying_pathways/multi_box_sdf.hpp
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include/spraying_pathways/pointcloud_ops.hpp
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include/spraying_pathways/spraying_grid.hpp
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include/spraying_pathways/spray_trajectory.hpp
+-- Up-to-date: /ros2_ws/install/spraying_pathways/include/spraying_pathways/types.hpp
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/go_home_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/follow_joints_positions_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_v2_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_trajectory_v1_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_v3_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_test_v1_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_test_v2_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_test_go_v1_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_test_go_v2_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/cartesian_path_planner_cubes_v4_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/lidar_surface_scanner_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/flat_fan_spraying_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/test_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/flat_fan_spraying_v2_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/moving_obstacle
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/flat_fan_spraying_v3_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/flat_fan_spraying_v4_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/safety_stop_on_unknown_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/inspect_flatness_node
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/trajectory_logger.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/plot_trajectory_log.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/depth_dip_detector_v1.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/transform_camera_pointcloud.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/ee_velocity_monitor.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/unknown_object_detector.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/pointcloud_transform_and_unknown_filter.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/pointcloud_transform_and_unknown_filter_v2.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/pointcloud_transform_and_unknown_filter_v3.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/lib/spraying_pathways/obstacles_tracking.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/share/spraying_pathways/launch
+-- Up-to-date: /ros2_ws/install/spraying_pathways/share/spraying_pathways/launch/bringup.launch.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/share/spraying_pathways/launch/bringup_v2.launch.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/share/spraying_pathways/launch/bringup_v3.launch.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/share/spraying_pathways/launch/bringup_v4.launch.py
+-- Up-to-date: /ros2_ws/install/spraying_pathways/share/spraying_pathways/launch/bringup_v5.launch.py
+CMake Error at cmake_install.cmake:449 (file):
+  file INSTALL cannot find "/ros2_ws/src/spraying_pathways/rviz": No such
+  file or directory.
+
+
+---
+--- stderr: spraying_pathways
+CMake Error at cmake_install.cmake:449 (file):
+  file INSTALL cannot find "/ros2_ws/src/spraying_pathways/rviz": No such
+  file or directory.
+
+
+---
+Failed   <<< spraying_pathways [7.19s, exited with code 1]
+
+Summary: 0 packages finished [7.68s]
+  1 package failed: spraying_pathways
+  1 package had stderr output: spraying_pathways
