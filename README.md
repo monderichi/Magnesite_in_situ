@@ -38,6 +38,10 @@ This sequence will:
 4. Launch the MoveIt MoveGroup.
 5. Open RViz for motion planning visualization.
 
+### CAD Model
+
+The repository includes a STEP file (`phee_parts.STEP`) containing the 3D model of the robotic arm parts and the experimental setup. This can be used for reference or for creating collision meshes in simulation.
+
 ### 2. Launching the Real Robot
 
 To control the physical myCobot 320 hardware, ensure it is powered on, Emergency Stop is accessible, and the USB cable is connected. 
