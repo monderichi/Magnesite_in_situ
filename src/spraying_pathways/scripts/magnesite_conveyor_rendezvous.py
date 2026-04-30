@@ -632,14 +632,19 @@ class MagnesiteConveyorRendezvous(Node):
 
                 # ---- Trigger: fire EARLY so rock is at Y_PARK when push executes ----
                 # The robot is already at park (push-start position).
-                # It takes t_lead seconds from trigger to when the tool sweeps
-                # through the rock. During that time, the rock moves |vy|*t_lead
-                # in -Y. So we trigger when:
-                #   y_rock ≈ Y_PARK + |vy| * t_lead
-                # t_lead = planning overhead (MoveIt plan + goPark verify)
+                # t_lead = how long from trigger until the push sweeps through.
+                # Use the online-measured cycle time when available; otherwise
+                # fall back to the configured planning overhead.
+                # Measured exec_time from /magnesite_exec_time includes:
+                #   goPark() verify + Cartesian plan + execute + goPark() return
+                # We only need the "go-to-start + Cartesian execute" portion,
+                # which is roughly half the full cycle. Use full exec_t to be safe.
+                if self.measured_exec_t is not None:
+                    t_lead = self.measured_exec_t * 0.5  # first half: go + push
+                else:
+                    t_lead = PLANNING_OVERHEAD_S  # fallback until first measurement
+
                 exec_t = self.solver._calc_exec_time()
-                # Lead time: planning overhead only (push itself is fast)
-                t_lead = PLANNING_OVERHEAD_S
                 trigger_y = self.y_park + abs(vy_kf) * t_lead
 
                 prev_y = self.track_prev_y.get(tracker_id, y_kf + 0.05)
@@ -668,7 +673,8 @@ class MagnesiteConveyorRendezvous(Node):
                             f"trigger_y={trigger_y:.3f} "
                             f"y_at_push={y_at_push:.3f} "
                             f"vy={vy_kf*100:.1f}cm/s "
-                            f"t_lead={t_lead:.1f}s")
+                            f"t_lead={t_lead:.1f}s "
+                            f"(measured={self.measured_exec_t})")
                     else:
                         self.get_logger().warn(
                             f"[TRIGGER] ID {tracker_id}: predicted Y={y_at_push:.3f} "

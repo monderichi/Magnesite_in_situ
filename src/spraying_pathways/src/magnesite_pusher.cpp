@@ -26,6 +26,15 @@ public:
     park_joints_[4]  = this->declare_parameter("park_j4", -1.613731426393957);
     park_joints_[5]  = this->declare_parameter("park_j5", -0.1303760951239764);
 
+    // Push-end joint values (fallback if Cartesian path planning fails):
+    // These are the joints at the END of the 14cm -X push.
+    push_end_joints_[0] = this->declare_parameter("push_end_j0", -0.07504915783575616);
+    push_end_joints_[1] = this->declare_parameter("push_end_j1",  1.4203489452729854);
+    push_end_joints_[2] = this->declare_parameter("push_end_j2", -0.4279547325890096);
+    push_end_joints_[3] = this->declare_parameter("push_end_j3",  0.5122541354603357);
+    push_end_joints_[4] = this->declare_parameter("push_end_j4", -1.556833692778942);
+    push_end_joints_[5] = this->declare_parameter("push_end_j5", -0.15323990832510212);
+
     tf_buffer_   = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
@@ -98,18 +107,25 @@ private:
       double fraction = move_group_->computeCartesianPath(
         waypoints, 0.005, 0.0, trajectory, true);
 
-      if (fraction > 0.95) {
+      RCLCPP_INFO(this->get_logger(),
+        "Cartesian path fraction: %.0f%%", fraction * 100.0);
+
+      if (fraction > 0.5) {
+        // Good enough path: execute the Cartesian trajectory
         RCLCPP_INFO(this->get_logger(),
-          "Cartesian path computed (%.0f%%), executing linear push...", fraction * 100.0);
+          "Executing Cartesian push (%.0f%% of path)...", fraction * 100.0);
         auto exec_result = move_group_->execute(trajectory);
         if (exec_result == moveit::planning_interface::MoveItErrorCode::SUCCESS) {
-          RCLCPP_INFO(this->get_logger(), "Push executed successfully!");
+          RCLCPP_INFO(this->get_logger(), "Cartesian push executed successfully!");
         } else {
-          RCLCPP_ERROR(this->get_logger(), "Push execution failed.");
+          RCLCPP_ERROR(this->get_logger(), "Cartesian push execution failed, trying joint-space fallback.");
+          pushViaJoints();
         }
       } else {
-        RCLCPP_ERROR(this->get_logger(),
-          "Cartesian path planning failed (%.0f%% achieved). Aborting push.", fraction * 100.0);
+        // Cartesian planning failed: fall back to joint-space push using known end joints
+        RCLCPP_WARN(this->get_logger(),
+          "Cartesian path only %.0f%% achieved. Using joint-space fallback push.", fraction * 100.0);
+        pushViaJoints();
       }
 
       // ---- STEP 5: Return to park (push-start position) ----
@@ -143,10 +159,25 @@ private:
     }
   }
 
+  void pushViaJoints() {
+    // Fallback: joint-space move to the known push-end position.
+    // Less precise (not guaranteed linear) but ensures the push happens.
+    RCLCPP_INFO(this->get_logger(), "Joint-space fallback push to end position...");
+    std::vector<double> end_vals(push_end_joints_.begin(), push_end_joints_.end());
+    move_group_->setJointValueTarget(end_vals);
+    auto result = move_group_->move();
+    if (result != moveit::planning_interface::MoveItErrorCode::SUCCESS) {
+      RCLCPP_ERROR(this->get_logger(), "Joint-space push also failed!");
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Joint-space push done.");
+    }
+  }
+
   std::string group_name_;
   double push_distance_;
   double velocity_scale_, accel_scale_;
   std::array<double, 6> park_joints_;
+  std::array<double, 6> push_end_joints_;
   bool pushing_ = false;
 
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
