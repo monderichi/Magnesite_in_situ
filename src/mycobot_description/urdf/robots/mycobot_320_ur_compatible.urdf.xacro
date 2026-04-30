@@ -57,6 +57,7 @@
     <xacro:arg name="prefix" default=""/>
     <xacro:arg name="use_gazebo" default="false"/>
     <xacro:arg name="use_gripper" default="false"/>
+    <xacro:arg name="use_soft_ee" default="true"/>
     <xacro:arg name="controllers_file" default="none"/>
 
     <!-- World link -->
@@ -269,12 +270,14 @@
       <origin xyz="0 0 0" rpy="0 ${-pi/2.0} ${-pi/2.0}"/>
     </joint>
 
-    <!-- flange-tool0 fixed joint -->
-    <joint name="$(arg prefix)flange-tool0" type="fixed">
-      <parent link="$(arg prefix)flange"/>
-      <child link="$(arg prefix)tool0"/>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-    </joint>
+    <!-- flange-tool0 fixed joint - Only add if NOT using soft end effector -->
+    <xacro:unless value="$(arg use_soft_ee)">
+      <joint name="$(arg prefix)flange-tool0" type="fixed">
+        <parent link="$(arg prefix)flange"/>
+        <child link="$(arg prefix)tool0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </joint>
+    </xacro:unless>
 
     <!-- Gazebo Sim ROS2 Control Plugin -->
     <xacro:include filename="$(find mycobot_description)/urdf/control/gazebo_sim_ros2_control.urdf.xacro"/>
@@ -282,6 +285,14 @@
       robot_name="$(arg robot_name)"
       use_gazebo="$(arg use_gazebo)"
       controllers_file="$(arg controllers_file)"/>
+
+    <!-- Include Soft End Effector -->
+    <xacro:include filename="$(find mycobot_description)/urdf/mech/soft_end_effector.urdf.xacro"/>
+
+    <!-- Conditionally add soft end effector -->
+    <xacro:if value="$(arg use_soft_ee)">
+      <xacro:soft_end_effector parent_link="$(arg prefix)flange" prefix="$(arg prefix)"/>
+    </xacro:if>
 
     <!-- UR-compatible ROS2 Control Configuration -->
     <xacro:include filename="$(find mycobot_description)/urdf/control/mycobot_320_ur_ros2_control.urdf.xacro"/>

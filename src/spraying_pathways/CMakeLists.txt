@@ -37,6 +37,8 @@ find_package(moveit_ros_planning REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_geometry REQUIRED)
 
 # Make headers available to everything built in this package
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -291,6 +293,40 @@ ament_target_dependencies(inspect_flatness_node
   tf2_geometry_msgs
 )
 
+add_executable(magnesite_pusher src/magnesite_pusher.cpp)
+ament_target_dependencies(magnesite_pusher
+  rclcpp
+  geometry_msgs
+  moveit_ros_planning_interface
+  moveit_core
+  tf2_ros
+  tf2_geometry_msgs
+)
+
+# ONNX Runtime path (downloaded to project deps)
+set(ONNXRUNTIME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/onnxruntime" CACHE PATH "ONNX Runtime root")
+if(NOT EXISTS ${ONNXRUNTIME_DIR})
+  message(FATAL_ERROR "ONNX Runtime not found at ${ONNXRUNTIME_DIR}. Please download/extract onnxruntime-linux-x64 to ros2_ws/deps/onnxruntime")
+endif()
+
+add_executable(magnesite_conveyor_ros_node src/magnesite_conveyor_ros.cpp)
+ament_target_dependencies(magnesite_conveyor_ros_node
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  std_msgs
+  cv_bridge
+  image_geometry
+  tf2_ros
+)
+target_include_directories(magnesite_conveyor_ros_node PRIVATE
+  ${ONNXRUNTIME_DIR}/include
+)
+target_link_libraries(magnesite_conveyor_ros_node
+  ${ONNXRUNTIME_DIR}/lib/libonnxruntime.so
+  ${OpenCV_LIBS}
+)
+
 # self_filter_node temporarily disabled due to missing headers
 # add_executable(self_filter_node src/self_filter.cpp)
 # ament_target_dependencies(self_filter_node
@@ -328,6 +364,8 @@ install(TARGETS
   flat_fan_spraying_v4_node
   safety_stop_on_unknown_node
   inspect_flatness_node
+  magnesite_pusher
+  magnesite_conveyor_ros_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -346,6 +384,12 @@ install(PROGRAMS
   scripts/test_mycobot_setup.sh
   scripts/mycobot_driver.py
   scripts/spray_valve_node.py
+  scripts/pointcloud_collision_filter.py
+  scripts/robot_self_filter.py
+  scripts/magnesite_conveyor_ros.py
+  scripts/magnesite_conveyor_ros_kf.py
+  scripts/conveyor_rendezvous_solver.py
+  scripts/magnesite_conveyor_rendezvous.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

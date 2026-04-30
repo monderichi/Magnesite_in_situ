@@ -95,6 +95,7 @@ class MyCobot320Driver(Node):
         self.current_joint_angles = [0.0] * 6
         self.current_joint_velocities = [0.0] * 6
         self._serial_lock = threading.Lock()
+        self.is_executing = False
 
         if not PYMYCOBOT_AVAILABLE:
             self.get_logger().error("pymycobot not installed! Install: pip3 install pymycobot")
@@ -219,7 +220,7 @@ class MyCobot320Driver(Node):
 
     def _publish_joint_states(self):
         """Publish current joint states."""
-        if not self.mock_mode and self.connected:
+        if not self.mock_mode and self.connected and not self.is_executing:
             angles = self._get_angles_safe()
             if angles:
                 self.current_joint_angles = [math.radians(a) for a in angles]
@@ -325,6 +326,7 @@ class MyCobot320Driver(Node):
         4. Result: smooth, continuous motion without stop-and-go
         """
         self.get_logger().info("Executing trajectory...")
+        self.is_executing = True
 
         trajectory = goal_handle.request.trajectory
         joint_names = trajectory.joint_names
@@ -352,8 +354,8 @@ class MyCobot320Driver(Node):
         total_duration = last_point.time_from_start.sec + last_point.time_from_start.nanosec * 1e-9
         self.get_logger().info(f"Trajectory duration: {total_duration:.2f}s")
 
-        # Interpolate trajectory into dense waypoints (every 50ms)
-        dense_waypoints = self._interpolate_trajectory(trajectory, joint_indices, interval_ms=50)
+        # Interpolate trajectory into dense waypoints (every 100ms instead of 50ms to avoid overwhelming serial)
+        dense_waypoints = self._interpolate_trajectory(trajectory, joint_indices, interval_ms=100)
         self.get_logger().info(f"Interpolated to {len(dense_waypoints)} dense waypoints (from {total_points} original)")
 
         feedback_msg = FollowJointTrajectory.Feedback()
@@ -396,7 +398,11 @@ class MyCobot320Driver(Node):
             if i % 5 == 0 or i == len(dense_waypoints) - 1:
                 feedback_msg.desired.positions = [math.radians(a) for a in angles_deg]
                 feedback_msg.actual.positions = [self.current_joint_angles[idx] for idx in joint_indices if idx >= 0]
-                goal_handle.publish_feedback(feedback_msg)
+                try:
+                    if goal_handle.is_active:
+                        goal_handle.publish_feedback(feedback_msg)
+                except Exception:
+                    pass
 
             # Log progress
             if i == 0 or i == len(dense_waypoints) - 1:
@@ -413,6 +419,7 @@ class MyCobot320Driver(Node):
             if actual:
                 self.current_joint_angles = [math.radians(a) for a in actual]
 
+        self.is_executing = False
         elapsed_total = time.time() - execution_start
         goal_handle.succeed()
         self.get_logger().info(f"Trajectory complete in {elapsed_total:.2f}s (planned: {total_duration:.2f}s)")
@@ -454,7 +461,9 @@ def main(args=None):
     driver = MyCobot320Driver()
 
     try:
-        rclpy.spin(driver)
+        from rclpy.executors import MultiThreadedExecutor
+        executor = MultiThreadedExecutor()
+        rclpy.spin(driver, executor=executor)
     except KeyboardInterrupt:
         driver.get_logger().info("Shutting down...")
     finally:

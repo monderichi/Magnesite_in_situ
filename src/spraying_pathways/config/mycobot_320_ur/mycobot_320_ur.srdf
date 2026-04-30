@@ -49,6 +49,10 @@
   <disable_collisions link1="wrist_1_link" link2="wrist_2_link" reason="Adjacent"/>
   <disable_collisions link1="wrist_2_link" link2="wrist_3_link" reason="Adjacent"/>
   <disable_collisions link1="wrist_3_link" link2="flange" reason="Adjacent"/>
+  <disable_collisions link1="wrist_3_link" link2="soft_tip" reason="Adjacent"/>
+  <disable_collisions link1="wrist_3_link" link2="ee_body" reason="Adjacent"/>
+  <disable_collisions link1="flange" link2="soft_tip" reason="Adjacent"/>
+  <disable_collisions link1="flange" link2="ee_body" reason="Adjacent"/>
   
   <!-- Never colliding pairs -->
   <disable_collisions link1="base_link" link2="upper_arm_link" reason="Never"/>
@@ -57,6 +61,8 @@
   <disable_collisions link1="base_link" link2="wrist_2_link" reason="Never"/>
   <disable_collisions link1="base_link" link2="wrist_3_link" reason="Never"/>
   <disable_collisions link1="base_link" link2="flange" reason="Never"/>
+  <disable_collisions link1="base_link" link2="soft_tip" reason="Never"/>
+  <disable_collisions link1="base_link" link2="ee_body" reason="Never"/>
   <disable_collisions link1="shoulder_link" link2="forearm_link" reason="Never"/>
   <disable_collisions link1="shoulder_link" link2="wrist_1_link" reason="Never"/>
   <disable_collisions link1="shoulder_link" link2="wrist_2_link" reason="Never"/>
@@ -69,5 +75,10 @@
   <disable_collisions link1="wrist_1_link" link2="wrist_3_link" reason="Never"/>
   <disable_collisions link1="wrist_1_link" link2="flange" reason="Never"/>
   <disable_collisions link1="wrist_2_link" link2="flange" reason="Never"/>
+  <disable_collisions link1="wrist_2_link" link2="soft_tip" reason="Never"/>
+  <disable_collisions link1="wrist_2_link" link2="ee_body" reason="Never"/>
+  <disable_collisions link1="wrist_3_link" link2="ee_body" reason="Never"/>
+  <disable_collisions link1="flange" link2="ee_body" reason="Never"/>
+  <disable_collisions link1="soft_tip" link2="ee_body" reason="Adjacent"/>
 
 </robot>

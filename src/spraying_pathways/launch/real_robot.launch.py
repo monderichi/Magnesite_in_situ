@@ -242,7 +242,7 @@ def launch_setup(context, *args, **kwargs):
         log_starting_valve,
         robot_state_publisher_node,
         mycobot_driver_node,
-        spray_valve_node,
+        # spray_valve_node,
         delay_moveit,
         delay_rviz,
     ]
