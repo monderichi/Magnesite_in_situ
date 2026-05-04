@@ -66,12 +66,12 @@ Y_PARK = 0.255
 # ---- Robot dynamics for rendezvous solver ------------------
 # Measure these empirically at your operating velocity_scale:
 V_ROBOT_CARTESIAN = 0.035      # m/s  (EE linear speed in Y)
-PLANNING_OVERHEAD_S = 2.0      # s    (MoveIt plan + network latency)
+PLANNING_OVERHEAD_S = 2.2      # s    (goPushStart time at 40% scale, measured)
 NOMINAL_MOTION_S = 0.70        # s    (hover time at 100% speed)
-ROBOT_VELOCITY_SCALE = 0.10    # must match pusher node
+ROBOT_VELOCITY_SCALE = 0.40    # must match pusher node (was 0.10)
 
 # Time from robot arrival at hover to START of push (orient + lower)
-T_PREP_S = 1.5
+T_PREP_S = 0.7                 # Cartesian push takes ~1.4s, half = 0.7s mid-point
 
 # Workspace limits in base_link Y
 WORKSPACE_Y_MIN = -0.10
@@ -196,6 +196,7 @@ class MagnesiteConveyorRendezvous(Node):
         self.track_prev_y: dict = {}       # {track_id: prev_y_kf} for line crossing
         self.triggered_ids: set = set()
         self.last_trigger_time: dict = {}   # {track_id: monotonic_time}
+        self.armed_ids: set = set()         # rocks that have crossed the trigger line
 
         # ---- Rendezvous solver -----------------------------------
         self.solver = ConveyorRendezvousSolver(
@@ -583,12 +584,23 @@ class MagnesiteConveyorRendezvous(Node):
         if fresh_inference and tracked_detections and n > 0:
             crossed_verify_in, crossed_verify_out = self.verify_zone.trigger(
                 detections=tracked_detections)
-            self.trigger_zone.trigger(detections=tracked_detections)
+            # Capture trigger line crossings to arm rocks for firing
+            crossed_trigger_in, crossed_trigger_out = self.trigger_zone.trigger(
+                detections=tracked_detections)
 
             for i in range(n):
                 tracker_id = tracked_detections.tracker_id[i]
                 cls_id = tracked_detections.class_id[i]
                 active_ids.add(tracker_id)
+
+                # ---- Stage 1: Arm rock when it crosses the trigger line ----
+                # Accept either crossing direction (in OR out) so it works
+                # regardless of which way the user drew the trigger line.
+                if (crossed_trigger_in[i] or crossed_trigger_out[i]) and cls_id == 1:
+                    if tracker_id not in self.armed_ids:
+                        self.armed_ids.add(tracker_id)
+                        self.get_logger().info(
+                            f"[ARMED] ID {tracker_id}: crossed trigger line, armed for push")
 
                 if cls_id != 1:
                     continue  # only process magnesite
@@ -630,57 +642,53 @@ class MagnesiteConveyorRendezvous(Node):
                 # Fixed push Z: 1 mm above belt surface
                 z_push = BELT_Z + PUSH_Z_OFFSET
 
-                # ---- Trigger: fire EARLY so rock is at Y_PARK when push executes ----
-                # The robot is already at park (push-start position).
-                # t_lead = how long from trigger until the push sweeps through.
-                # Use the online-measured cycle time when available; otherwise
-                # fall back to the configured planning overhead.
-                # Measured exec_time from /magnesite_exec_time includes:
-                #   goPark() verify + Cartesian plan + execute + goPark() return
-                # We only need the "go-to-start + Cartesian execute" portion,
-                # which is roughly half the full cycle. Use full exec_t to be safe.
+                # ---- Trigger: fire when belt travel time = robot travel time ----
+                # Our robot goes to a FIXED push position (not a moving rendezvous).
+                # Correct condition: fire when the rock's remaining travel time to
+                # Y_PARK equals the robot's time to reach push-start position.
+                #
+                # t_goPushStart ≈ 41% of full cycle (measured: 2.16s / 5.29s).
+                # Fire when: (y_kf - Y_PARK) / |vy| <= t_goPushStart
+                # i.e.:       y_kf <= Y_PARK + |vy| * t_goPushStart
+                GOTO_PUSH_FRACTION = 0.41   # goPushStart / full_cycle
+                GOTO_PUSH_FALLBACK_S = 2.2  # first-run estimate
                 if self.measured_exec_t is not None:
-                    t_lead = self.measured_exec_t * 0.5  # first half: go + push
+                    t_goPushStart = self.measured_exec_t * GOTO_PUSH_FRACTION
                 else:
-                    t_lead = PLANNING_OVERHEAD_S  # fallback until first measurement
+                    t_goPushStart = GOTO_PUSH_FALLBACK_S
 
-                exec_t = self.solver._calc_exec_time()
-                trigger_y = self.y_park + abs(vy_kf) * t_lead
-
-                prev_y = self.track_prev_y.get(tracker_id, y_kf + 0.05)
-                crossed_trigger = (prev_y > trigger_y >= y_kf)
-                self.track_prev_y[tracker_id] = y_kf
+                trigger_y = self.y_park + abs(vy_kf) * t_goPushStart
+                should_fire = (y_kf <= trigger_y)
 
                 # Cooldown check
                 last_t = self.last_trigger_time.get(tracker_id, 0.0)
                 cooldown_ok = (t_now - last_t) > RETRIGGER_COOLDOWN_S
 
-                if (crossed_trigger
+                # ---- Stage 2: Fire push (only if ARMED by trigger line) ----
+                if (should_fire
+                        and tracker_id in self.armed_ids
                         and tracker_id not in self.triggered_ids
                         and age >= MIN_TRACK_AGE
                         and vy_kf < -MIN_BELT_SPEED
                         and cooldown_ok):
-                    # Verify the rock will still be in workspace at push time
-                    y_at_push = y_kf + vy_kf * t_lead
+                    y_at_push = y_kf + vy_kf * t_goPushStart
                     if WORKSPACE_Y_MIN <= y_at_push <= WORKSPACE_Y_MAX:
                         self.publish_target_base_link(
                             x_smooth, self.y_park, z_push, tracker_id)
                         self.triggered_ids.add(tracker_id)
                         self.last_trigger_time[tracker_id] = t_now
                         self.get_logger().info(
-                            f"[TRIGGER] ID {tracker_id}: "
-                            f"EARLY FIRE | y_rock={y_kf:.3f} "
-                            f"trigger_y={trigger_y:.3f} "
+                            f"[TRIGGER] ID {tracker_id}: FIRE "
+                            f"y_rock={y_kf:.3f} trigger_y={trigger_y:.3f} "
                             f"y_at_push={y_at_push:.3f} "
-                            f"vy={vy_kf*100:.1f}cm/s "
-                            f"t_lead={t_lead:.1f}s "
-                            f"(measured={self.measured_exec_t})")
+                            f"t_goto={t_goPushStart:.2f}s vy={vy_kf*100:.1f}cm/s "
+                            f"[solver: y_r={res.y_r:.3f} t_r={res.t_r:.1f}s]")
                     else:
                         self.get_logger().warn(
-                            f"[TRIGGER] ID {tracker_id}: predicted Y={y_at_push:.3f} "
-                            f"outside workspace, skip.")
+                            f"[TRIGGER] ID {tracker_id}: y_at_push={y_at_push:.3f} "
+                            f"outside workspace [{WORKSPACE_Y_MIN:.2f},{WORKSPACE_Y_MAX:.2f}], skip.")
 
-                # ---- Verify line reset --------------------------------
+                # ---- Verify line: disarm + alert -------------------------
                 if crossed_verify_in[i] or crossed_verify_out[i]:
                     alert_msg = (
                         f"ALERT! Magnesite ID {tracker_id} "
@@ -688,6 +696,7 @@ class MagnesiteConveyorRendezvous(Node):
                     self.get_logger().warning(alert_msg)
                     self.alert_pub.publish(String(data=alert_msg))
                     self.triggered_ids.discard(tracker_id)
+                    self.armed_ids.discard(tracker_id)   # disarm so it can re-arm next pass
                     for d in (self.track_kfs, self.track_last_t,
                               self.track_age, self.track_xz_smooth):
                         d.pop(tracker_id, None)
@@ -701,6 +710,7 @@ class MagnesiteConveyorRendezvous(Node):
             self.track_xz_smooth.pop(tid, None)
             self.track_prev_y.pop(tid, None)
             self.triggered_ids.discard(tid)
+            self.armed_ids.discard(tid)
             self.last_trigger_time.pop(tid, None)
 
         # ============================================================
