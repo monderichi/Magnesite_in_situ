@@ -1,4 +1,4 @@
-# arise_upatras_collab Workspace
+# Uv_magnesite_pick Workspace
 
 This repository contains the ROS 2 workspace for controlling the myCobot 320 M5 robotic arm, including simulation models, MoveIt 2 configurations, and motion planning scripts.
 
