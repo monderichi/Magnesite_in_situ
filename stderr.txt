@@ -1,0 +1,8 @@
+time=2026-05-04T08:56:32.286Z level=INFO msg="starting server" version=v1.0.3 host="" dynamicToolsets=false readOnly=false lockdownEnabled=false
+time=2026-05-04T08:56:32.645Z level=INFO msg="token scopes fetched for filtering" scopes="[admin:org repo workflow write:discussion write:packages]"
+GitHub MCP Server running on stdio
+time=2026-05-04T08:56:32.647Z level=INFO msg="server run start"
+time=2026-05-04T08:56:32.647Z level=INFO msg="server connecting"
+time=2026-05-04T08:56:32.647Z level=INFO msg="server session connected" session_id=""
+time=2026-05-04T08:56:37.057Z level=INFO msg="server session disconnected" session_id=""
+time=2026-05-04T08:56:37.057Z level=INFO msg="server session ended"

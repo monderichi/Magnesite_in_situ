@@ -17,6 +17,8 @@ setup(
         'console_scripts': [
             'trajectory_logger = scripts.trajectory_logger:main',
             'lidar_surface_scanner = scripts.lidar_surface_scanner:main',
+            'magnesite_conveyor_usb_cam = scripts.magnesite_conveyor_usb_cam:main',
+            'magnesite_conveyor_realsense_rgb = scripts.magnesite_conveyor_realsense_rgb:main',
         ],
     },
 )

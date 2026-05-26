@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="table_world">
+
+    <!-- Sun and ground -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <!-- Wood table (using package:// URI for portability) -->
+    <include>
+      <uri>package://spraying_pathways/models/wood_table</uri>
+      <pose>0 0 0 0 0 1.5708</pose>
+    </include>
+
+    <!-- Black table -->
+    <include>
+      <uri>package://spraying_pathways/models/black_table</uri>
+      <pose>1.1 0 0 0 0 1.5708</pose>
+    </include>
+
+    <!-- Box -->
+    <include>
+      <uri>package://spraying_pathways/models/box_0_5</uri>
+      <pose>1.0 0.2 0.77 0 0 0</pose>
+    </include>
+
+  </world>
+</sdf>

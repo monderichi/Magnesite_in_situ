@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="depth_camera" params="parent_link sim_gazebo:=false">
+
+    <link name="depth_camera_link">
+      <inertial>
+        <mass value="0.1"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia ixx="0.0001" ixy="0" ixz="0"
+                 iyy="0.0001" iyz="0"
+                 izz="0.0001"/>
+      </inertial>
+      <visual>
+        <geometry><box size="0.05 0.05 0.05"/></geometry>
+        <material name="Gray"/>
+      </visual>
+      <collision>
+        <geometry><box size="0.05 0.05 0.05"/></geometry>
+      </collision>
+    </link>
+
+    <joint name="depth_camera_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="depth_camera_link"/>
+      <origin xyz="2.3 -1.0 2.0" rpy="${pi} ${3*pi/4} ${-pi/6}"/>
+    </joint>
+
+    <xacro:if value="${sim_gazebo}">
+      <gazebo reference="depth_camera_link">
+        <sensor name="depth_camera" type="depth">
+          <always_on>true</always_on>
+          <update_rate>30.0</update_rate>
+          <visualize>true</visualize>
+          <pose>0 0 0 0 0 0</pose>
+          <camera>
+            <horizontal_fov>1.047</horizontal_fov>
+            <image>
+              <width>1024</width>
+              <height>576</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip>
+              <near>0.05</near>   <!-- before 0.01 -->
+              <far>20.0</far>     <!-- after 10.0 -->
+            </clip>
+          </camera>
+
+          <plugin name="gazebo_ros_depth_camera" filename="libgazebo_ros_camera.so">
+            <camera_name>depth_camera</camera_name>
+            <frame_name>depth_camera_link</frame_name>
+            <image_topic_name>image_raw</image_topic_name>
+            <camera_info_topic_name>camera_info</camera_info_topic_name>
+            <depth_image_topic_name>depth/image_raw</depth_image_topic_name>
+            <point_cloud_topic_name>depth/points</point_cloud_topic_name>
+            <point_cloud_cutoff_min>0.05</point_cloud_cutoff_min>
+            <point_cloud_cutoff_max>20.0</point_cloud_cutoff_max>
+            <min_depth>0.05</min_depth>
+            <max_depth>20.0</max_depth>
+          </plugin>
+        </sensor>
+      </gazebo>
+    </xacro:if>
+
+  </xacro:macro>
+
+</robot>

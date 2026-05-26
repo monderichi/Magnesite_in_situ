@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+    <!-- myCobot 320 M5 base - uses the 320's own base mesh -->
+    <xacro:macro name="mycobot_320_base" params="base_link prefix">
+        <link name="${prefix}${base_link}">
+            <inertial>
+                <origin xyz="0 0 0.0" rpy="0 0 0"/>
+                <mass value="0.5"/>
+                <inertia
+                    ixx="0.001" ixy="0.0" ixz="0.0"
+                    iyy="0.001" iyz="0.0"
+                    izz="0.002"/>
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="file://$(find mycobot_description)/meshes/mycobot_320/base.dae"/>
+                </geometry>
+                <origin xyz="0.0 0 0" rpy="0 0 ${pi/2}"/>
+            </visual>
+            <collision>
+                <geometry>
+                    <box size="0.15 0.15 0.08"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.04" rpy="0 0 0"/>
+            </collision>
+        </link>
+
+        <gazebo reference="${prefix}${base_link}">
+            <visual>
+                <material>
+                    <ambient>0.3 0.3 0.3 1</ambient>
+                    <diffuse>0.3 0.3 0.3 1</diffuse>
+                    <specular>0.3 0.3 0.3 1</specular>
+                </material>
+            </visual>
+        </gazebo>
+    </xacro:macro>
+</robot>

@@ -1,0 +1,3 @@
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm warn deprecated @modelcontextprotocol/server-github@2025.4.8: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+GitHub MCP Server running on stdio

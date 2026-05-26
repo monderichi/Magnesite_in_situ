@@ -1,0 +1,125 @@
+================================================================================
+MAGNESITE CONVEYOR ROS2 NODE - C++ PORT
+================================================================================
+
+Project: ros2_moveit_docker/ros2_ws
+Date: 2026-04-27
+
+================================================================================
+WHAT WAS DONE
+================================================================================
+
+1. VERIFIED YOLOV26 MODEL FORMAT
+   - Inspected ONNX model metadata: "Ultralytics model_YOLO26s model"
+   - Confirmed ONNX outputs:
+       output0: [1, 300, 38]  -> boxes (4) + score (1) + class (1) + mask coefficients (32)
+       output1: [1, 32, 160, 160] -> mask prototypes
+   - Verified Proto26 produces 32 prototypes and cv4 layers produce 32 mask coefficients
+   - Confirmed end2end export (NMS/TopK already baked into the ONNX graph)
+
+2. DOWNLOADED ONNX RUNTIME C++ SDK
+   - Extracted to: ros2_ws/deps/onnxruntime/
+   - Version: 1.19.2 (linux-x64)
+
+3. CREATED C++ SOURCE FILE
+   File: src/spraying_pathways/src/magnesite_conveyor_ros.cpp
+   Features:
+     - ONNX Runtime inference for YOLOv26-seg
+     - LAB + OTSU magnesite classification (OpenCV)
+     - Simple IOU-based multi-object tracker
+     - Trigger / Verify line zones with 3D PointStamped publishing
+     - Interactive OpenCV window (mouse + keyboard controls)
+     - Time-synchronized color + aligned depth processing
+     - PinholeCameraModel for 2D->3D ray projection
+
+4. UPDATED BUILD FILES
+   - CMakeLists.txt: added magnesite_conveyor_ros_node executable,
+     ONNX Runtime include/lib paths, cv_bridge + image_geometry deps
+   - package.xml: added <depend>cv_bridge</depend> and <depend>image_geometry</depend>
+
+5. BUILT SUCCESSFULLY
+   Command: colcon build --packages-select spraying_pathways
+   Result: executable created at build/spraying_pathways/magnesite_conveyor_ros_node
+
+================================================================================
+HOW TO RUN
+================================================================================
+
+1. Source ROS2 and workspace:
+   ------------------------------------------------------------------------
+   source /opt/ros/humble/setup.bash
+   source /media/monder/Files/robotics/project_phee/ros2_moveit_docker/ros2_ws/install/setup.bash
+   ------------------------------------------------------------------------
+
+2. Launch the C++ node:
+   ------------------------------------------------------------------------
+   ros2 run spraying_pathways magnesite_conveyor_ros_node
+   ------------------------------------------------------------------------
+
+3. Required ROS2 topics (same as Python version):
+   - /camera/camera/color/image_raw
+   - /camera/camera/aligned_depth_to_color/image_raw
+   - /camera/camera/aligned_depth_to_color/camera_info
+
+4. Published topics:
+   - /magnesite_target      (geometry_msgs/PointStamped) -> 3D target in camera_color_optical_frame
+   - /magnesite_alerts      (std_msgs/String)            -> verification line alerts
+
+================================================================================
+KEYBOARD CONTROLS (OpenCV window)
+================================================================================
+
+   q / ESC   Quit
+   t         Draw trigger line (click 2 points)
+   v         Draw verify line (click 2 points)
+   + / =     Increase zoom
+   - / _     Decrease zoom
+   i / I     Increase inference resolution (+64, max 1280)
+   d / D     Decrease inference resolution (-64, min 320)
+   h         Show controls help
+
+================================================================================
+DIFFERENCES FROM PYTHON VERSION
+================================================================================
+
+   Python (magnesite_conveyor_ros.py)   |   C++ (magnesite_conveyor_ros.cpp)
+   -------------------------------------|------------------------------------
+   Inference: Ultralytics .pt model     |   ONNX Runtime .onnx model
+   Tracker: sv.ByteTrack                |   Simple IOU tracker (custom)
+   Annotations: supervision library     |   Native OpenCV drawing
+   Language: Python 3                   |   C++17 / ROS2 Humble
+
+================================================================================
+CONFIGURATION (hardcoded in source)
+================================================================================
+
+   MODEL_PATH          = ".../yolo_uv/only_rock.onnx"
+   MAGNESITE_THRESHOLD = 50.0
+   CONFIDENCE          = 0.35
+   INFERENCE_SIZE      = 640
+   MIN_MASK_PIXELS     = 200
+   BLUR_KERNEL         = (5, 5)
+   SKIP_FRAMES         = 1
+   ZOOM_FACTOR         = 2.0
+   DISPLAY_W x DISPLAY_H = 1280 x 800
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+- If ONNX Runtime is not found during build:
+    Ensure deps/onnxruntime/ exists and contains include/ and lib/ folders.
+    If missing, re-download from:
+    https://github.com/microsoft/onnxruntime/releases/download/v1.19.2/onnxruntime-linux-x64-1.19.2.tgz
+
+- If camera topics are different on your system:
+    Edit the topic strings in the constructor of MagnesiteConveyorNode:
+      /camera/camera/color/image_raw
+      /camera/camera/aligned_depth_to_color/image_raw
+      /camera/camera/aligned_depth_to_color/camera_info
+
+- To rebuild after code changes:
+    cd /media/monder/Files/robotics/project_phee/ros2_moveit_docker/ros2_ws
+    colcon build --packages-select spraying_pathways --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+================================================================================

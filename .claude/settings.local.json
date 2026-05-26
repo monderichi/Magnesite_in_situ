@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//dev/**)",
+      "Bash(v4l2-ctl --list-devices)",
+      "Read(//sys/devices/pci0000:00/0000:00:14.0/usb1/1-13/1-13:1.0/video4linux/video0/**)",
+      "Read(//sys/devices/pci0000:00/0000:00:14.0/usb1/1-13/1-13:1.0/video4linux/video1/**)",
+      "Read(//sys/devices/pci0000:00/0000:00:14.0/usb2/2-4/2-4:1.0/video4linux/video2/**)",
+      "Read(//sys/devices/pci0000:00/0000:00:14.0/usb2/2-4/2-4:1.0/video4linux/video3/**)"
+    ]
+  }
+}

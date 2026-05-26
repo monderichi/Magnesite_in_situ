@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  Semantic Robot Description Format (SRDF) for myCobot 320 M5
+  Compatible with spraying_pathways C++ nodes
+  Planning group: ur_manipulator
+-->
+<robot name="mycobot_320">
+  
+  <!-- Virtual joint connecting robot to world -->
+  <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base_link"/>
+
+  <!-- 
+    Main planning group for the arm
+    Named "ur_manipulator" for compatibility with spraying_pathways C++ nodes
+    Chain: base_link -> link6 (end effector)
+  -->
+  <group name="ur_manipulator">
+    <chain base_link="base_link" tip_link="link6"/>
+  </group>
+
+  <!-- Alternative group name for mycobot-specific applications -->
+  <group name="arm">
+    <chain base_link="base_link" tip_link="link6"/>
+  </group>
+
+  <!-- Named poses / group states -->
+  <group_state name="home" group="ur_manipulator">
+    <joint name="joint2_to_joint1" value="0"/>
+    <joint name="joint3_to_joint2" value="0"/>
+    <joint name="joint4_to_joint3" value="0"/>
+    <joint name="joint5_to_joint4" value="0"/>
+    <joint name="joint6_to_joint5" value="0"/>
+    <joint name="joint6output_to_joint6" value="0"/>
+  </group_state>
+
+  <group_state name="home" group="arm">
+    <joint name="joint2_to_joint1" value="0"/>
+    <joint name="joint3_to_joint2" value="0"/>
+    <joint name="joint4_to_joint3" value="0"/>
+    <joint name="joint5_to_joint4" value="0"/>
+    <joint name="joint6_to_joint5" value="0"/>
+    <joint name="joint6output_to_joint6" value="0"/>
+  </group_state>
+
+  <group_state name="ready" group="ur_manipulator">
+    <joint name="joint2_to_joint1" value="0"/>
+    <joint name="joint3_to_joint2" value="0"/>
+    <joint name="joint4_to_joint3" value="1.5708"/>
+    <joint name="joint5_to_joint4" value="1.5708"/>
+    <joint name="joint6_to_joint5" value="0"/>
+    <joint name="joint6output_to_joint6" value="0"/>
+  </group_state>
+
+  <group_state name="ready" group="arm">
+    <joint name="joint2_to_joint1" value="0"/>
+    <joint name="joint3_to_joint2" value="0"/>
+    <joint name="joint4_to_joint3" value="1.5708"/>
+    <joint name="joint5_to_joint4" value="1.5708"/>
+    <joint name="joint6_to_joint5" value="0"/>
+    <joint name="joint6output_to_joint6" value="0"/>
+  </group_state>
+
+  <!-- Self-collision disable pairs -->
+  <!-- Adjacent links -->
+  <disable_collisions link1="base_link" link2="link1" reason="Adjacent"/>
+  <disable_collisions link1="link1" link2="link2" reason="Adjacent"/>
+  <disable_collisions link1="link2" link2="link3" reason="Adjacent"/>
+  <disable_collisions link1="link3" link2="link4" reason="Adjacent"/>
+  <disable_collisions link1="link4" link2="link5" reason="Adjacent"/>
+  <disable_collisions link1="link5" link2="link6" reason="Adjacent"/>
+  
+  <!-- Never colliding pairs -->
+  <disable_collisions link1="base_link" link2="link2" reason="Never"/>
+  <disable_collisions link1="base_link" link2="link3" reason="Never"/>
+  <disable_collisions link1="base_link" link2="link4" reason="Never"/>
+  <disable_collisions link1="base_link" link2="link5" reason="Never"/>
+  <disable_collisions link1="base_link" link2="link6" reason="Never"/>
+  <disable_collisions link1="link1" link2="link3" reason="Never"/>
+  <disable_collisions link1="link1" link2="link4" reason="Never"/>
+  <disable_collisions link1="link1" link2="link5" reason="Never"/>
+  <disable_collisions link1="link1" link2="link6" reason="Never"/>
+  <disable_collisions link1="link2" link2="link4" reason="Never"/>
+  <disable_collisions link1="link2" link2="link5" reason="Never"/>
+  <disable_collisions link1="link2" link2="link6" reason="Never"/>
+  <disable_collisions link1="link3" link2="link5" reason="Never"/>
+  <disable_collisions link1="link3" link2="link6" reason="Never"/>
+  <disable_collisions link1="link4" link2="link6" reason="Never"/>
+
+</robot>

@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+
+    <!-- Sun and ground -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <include>
+      <uri>file:///ros2_ws/install/spraying_pathways/share/spraying_pathways/models/wood_table</uri>
+      <pose>0 0 0 0 0 1.5708</pose>
+    </include>
+
+    <include>
+      <uri>file:///ros2_ws/install/spraying_pathways/share/spraying_pathways/models/black_table</uri>
+      <pose>1.1 0 0 0 0 1.5708</pose>
+    </include>
+
+    <include>
+      <uri>file:///ros2_ws/install/spraying_pathways/share/spraying_pathways/models/box_0_5</uri>
+      <pose>1.0 0.2 0.77 0 0 0</pose>
+    </include>
+    
+
+  </world>
+</sdf>

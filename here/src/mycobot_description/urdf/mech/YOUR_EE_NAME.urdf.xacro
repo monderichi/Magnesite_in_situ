@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- 
+    End Effector Template
+    - parent_link: connects to robot (wrist_3_link for UR-compatible, link6 for native)
+    - prefix: allows multiple end effectors
+  -->
+  <xacro:macro name="your_end_effector" params="parent_link:='wrist_3_link' prefix:=''">
+    
+    <!-- Base of end effector -->
+    <link name="${prefix}ee_base_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/YOUR_EE_NAME/visual/ee_base.dae"/>
+        </geometry>
+        <material name="light_grey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <!-- Use simple geometry for collision -->
+          <cylinder radius="0.04" length="0.08"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.5"/>
+        <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- Joint connecting to robot -->
+    <joint name="${prefix}ee_base_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${prefix}ee_base_link"/>
+      <!-- Adjust this offset to position your EE correctly -->
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    </joint>
+
+    <!-- TOOL FRAME - Required for MoveIt! -->
+    <link name="${prefix}tool0"/>
+    <joint name="${prefix}tool0_joint" type="fixed">
+      <parent link="${prefix}ee_base_link"/>
+      <child link="${prefix}tool0"/>
+      <!-- Position the tool frame at the working point (e.g., gripper tip) -->
+      <origin xyz="0 0 0.12" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Example: Add a moving finger (optional) -->
+    <link name="${prefix}finger_left">
+      <visual>
+        <geometry>
+          <box size="0.02 0.01 0.06"/>
+        </geometry>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="0.02 0.01 0.06"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${prefix}finger_left_joint" type="prismatic">
+      <parent link="${prefix}ee_base_link"/>
+      <child link="${prefix}finger_left"/>
+      <origin xyz="0 0.03 0.1" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="0" upper="0.05" effort="10" velocity="0.1"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

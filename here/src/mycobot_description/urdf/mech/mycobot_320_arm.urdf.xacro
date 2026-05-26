@@ -1,0 +1,233 @@
+<?xml version="1.0"?>
+<!-- myCobot 320 M5 arm - based on official Elephant Robotics mycobot_320_m5_2022.urdf -->
+<!-- This URDF matches the original exactly with 6 revolute joints, no flange -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:property name="joint_effort" value="1000.0"/>
+  <xacro:property name="joint_velocity" value="2.792527"/>
+  <xacro:property name="joint_damping" value="0.0"/>
+  <xacro:property name="joint_friction" value="0.0"/>
+
+  <!-- Link masses (estimated for Gazebo simulation) -->
+  <xacro:property name="base_mass" value="0.5"/>
+  <xacro:property name="link1_mass" value="0.25"/>
+  <xacro:property name="link2_mass" value="0.35"/>
+  <xacro:property name="link3_mass" value="0.30"/>
+  <xacro:property name="link4_mass" value="0.25"/>
+  <xacro:property name="link5_mass" value="0.20"/>
+  <xacro:property name="link6_mass" value="0.15"/>
+
+  <xacro:macro name="link_inertial" params="mass ixx iyy izz">
+    <inertial>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${ixx}" ixy="0.0" ixz="0.0"
+        iyy="${iyy}" iyz="0.0"
+        izz="${izz}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="material_visual" params="ref_link ambient diffuse specular">
+    <gazebo reference="${ref_link}">
+      <visual>
+        <material>
+          <ambient>${ambient}</ambient>
+          <diffuse>${diffuse}</diffuse>
+          <specular>${specular}</specular>
+        </material>
+      </visual>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="mycobot_320_arm" params="base_link prefix *origin">
+
+    <!-- Base link - matches official 320 URDF -->
+    <link name="${prefix}${base_link}">
+      <xacro:link_inertial mass="${base_mass}" ixx="0.001" iyy="0.001" izz="0.002"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/base.dae"/>
+        </geometry>
+        <origin xyz="0.0 0 0" rpy="0 0 1.5708"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/base.dae"/>
+        </geometry>
+        <origin xyz="0.0 0 0" rpy="0 0 1.5708"/>
+      </collision>
+    </link>
+
+    <link name="${prefix}link1">
+      <xacro:link_inertial mass="${link1_mass}" ixx="0.00025" iyy="0.00025" izz="0.00015"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link1.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.078" rpy="0 0 1.5708"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link1.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.078" rpy="0 0 1.5708"/>
+      </collision>
+    </link>
+
+    <link name="${prefix}link2">
+      <xacro:link_inertial mass="${link2_mass}" ixx="0.00030" iyy="0.00030" izz="0.00015"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link2.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.04" rpy="0 1.5708 0"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link2.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.04" rpy="0 1.5708 0"/>
+      </collision>
+    </link>
+
+    <link name="${prefix}link3">
+      <xacro:link_inertial mass="${link3_mass}" ixx="0.00025" iyy="0.00025" izz="0.00015"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link3.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 0.039" rpy="1.5708 1.5708 1.5708"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link3.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 0.039" rpy="1.5708 1.5708 1.5708"/>
+      </collision>
+    </link>
+
+    <link name="${prefix}link4">
+      <xacro:link_inertial mass="${link4_mass}" ixx="0.00020" iyy="0.00020" izz="0.00015"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link4.dae"/>
+        </geometry>
+        <origin xyz="0.0 -0.0024 -0.05" rpy="1.5708 1.5708 0"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link4.dae"/>
+        </geometry>
+        <origin xyz="0.0 -0.0024 -0.05" rpy="1.5708 1.5708 0"/>
+      </collision>
+    </link>
+
+    <link name="${prefix}link5">
+      <xacro:link_inertial mass="${link5_mass}" ixx="0.00015" iyy="0.00015" izz="0.00010"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link5.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.05" rpy="0 0 -1.5708"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link5.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.05" rpy="0 0 -1.5708"/>
+      </collision>
+    </link>
+
+    <link name="${prefix}link6">
+      <xacro:link_inertial mass="${link6_mass}" ixx="0.00010" iyy="0.00010" izz="0.00010"/>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link6.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.0115" rpy="1.5708 1.5708 0"/>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/mycobot_320/link6.dae"/>
+        </geometry>
+        <origin xyz="0.0 0.0 -0.0115" rpy="1.5708 1.5708 0"/>
+      </collision>
+    </link>
+
+    <!-- ============================================================ -->
+    <!-- JOINTS - Following official elephantrobotics naming scheme   -->
+    <!-- All 6 joints are REVOLUTE for 6-DOF arm                      -->
+    <!-- ============================================================ -->
+
+    <!-- Joint 1: base to link1 (REVOLUTE - base rotation) -->
+    <joint name="${prefix}joint2_to_joint1" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="${joint_effort}" lower="-2.93" upper="2.93" velocity="${joint_velocity}"/>
+      <parent link="${prefix}${base_link}"/>
+      <child link="${prefix}link1"/>
+      <origin xyz="0 0 0.1739" rpy="0 0 0"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+
+    <!-- Joint 2: link1 to link2 -->
+    <joint name="${prefix}joint3_to_joint2" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="${joint_effort}" lower="-2.35" upper="2.35" velocity="${joint_velocity}"/>
+      <parent link="${prefix}link1"/>
+      <child link="${prefix}link2"/>
+      <origin xyz="0 -0.08878 0" rpy="0 -1.5708 1.5708"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+
+    <!-- Joint 3: link2 to link3 -->
+    <joint name="${prefix}joint4_to_joint3" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="${joint_effort}" lower="-2.53" upper="2.53" velocity="${joint_velocity}"/>
+      <parent link="${prefix}link2"/>
+      <child link="${prefix}link3"/>
+      <origin xyz="0.135 0 -0.08878" rpy="0 0 0"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+
+    <!-- Joint 4: link3 to link4 -->
+    <joint name="${prefix}joint5_to_joint4" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="${joint_effort}" lower="-2.53" upper="2.53" velocity="${joint_velocity}"/>
+      <parent link="${prefix}link3"/>
+      <child link="${prefix}link4"/>
+      <origin xyz="0.120 0 0.08878" rpy="0 0 1.5708"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+
+    <!-- Joint 5: link4 to link5 -->
+    <joint name="${prefix}joint6_to_joint5" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="${joint_effort}" lower="-2.93" upper="2.93" velocity="${joint_velocity}"/>
+      <parent link="${prefix}link4"/>
+      <child link="${prefix}link5"/>
+      <origin xyz="0 -0.095 0" rpy="1.5708 0 0"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+
+    <!-- Joint 6: link5 to link6 -->
+    <joint name="${prefix}joint6output_to_joint6" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="${joint_effort}" lower="-3.14" upper="3.14" velocity="${joint_velocity}"/>
+      <parent link="${prefix}link5"/>
+      <child link="${prefix}link6"/>
+      <origin xyz="0 0.0655 0" rpy="-1.5708 0 0"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+
+    <!-- Gazebo visual materials -->
+    <xacro:material_visual ref_link="${prefix}${base_link}" ambient="0.3 0.3 0.3 1" diffuse="0.3 0.3 0.3 1" specular="0.3 0.3 0.3 1"/>
+    <xacro:material_visual ref_link="${prefix}link1" ambient="1 1 1 1" diffuse="1 1 1 1" specular="1 1 1 1"/>
+    <xacro:material_visual ref_link="${prefix}link2" ambient="1 1 1 1" diffuse="1 1 1 1" specular="1 1 1 1"/>
+    <xacro:material_visual ref_link="${prefix}link3" ambient="1 1 1 1" diffuse="1 1 1 1" specular="1 1 1 1"/>
+    <xacro:material_visual ref_link="${prefix}link4" ambient="1 1 1 1" diffuse="1 1 1 1" specular="1 1 1 1"/>
+    <xacro:material_visual ref_link="${prefix}link5" ambient="1 1 1 1" diffuse="1 1 1 1" specular="1 1 1 1"/>
+    <xacro:material_visual ref_link="${prefix}link6" ambient="1 1 1 1" diffuse="1 1 1 1" specular="1 1 1 1"/>
+
+  </xacro:macro>
+</robot>

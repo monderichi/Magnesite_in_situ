@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="mycobot_world">
+    <!-- Physics settings -->
+    <physics type="ode">
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    
+    <!-- Sun -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    
+    <!-- Ground plane -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    
+    <!-- Simple table -->
+    <model name="table">
+      <static>true</static>
+      <link name="table_link">
+        <collision name="table_collision">
+          <geometry>
+            <box><size>1.0 1.0 0.05</size></box>
+          </geometry>
+        </collision>
+        <visual name="table_visual">
+          <geometry>
+            <box><size>1.0 1.0 0.05</size></box>
+          </geometry>
+          <material>
+            <ambient>0.5 0.3 0.1 1</ambient>
+            <diffuse>0.5 0.3 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <pose>0.5 0 0.35 0 0 0</pose>
+    </model>
+    
+  </world>
+</sdf>

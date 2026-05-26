@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- 
+    Soft End Effector for myCobot 320
+    Exported from SolidWorks
+    - End_effector_soft: transparent soft part
+    - End_effector: rigid main body
+  -->
+  <xacro:macro name="soft_end_effector" params="parent_link:='wrist_3_link' prefix:=''">
+
+    <!-- Soft part (transparent) -->
+    <link name="${prefix}soft_tip">
+      <inertial>
+        <origin xyz="-4.513E-05 0.029912 0.024862" rpy="0 0 0"/>
+        <mass value="0.04496"/>
+        <inertia ixx="2.7883E-05" ixy="-3.0268E-08" ixz="4.1966E-08"
+                 iyy="2.616E-05" iyz="8.2218E-08"
+                 izz="1.8082E-05"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/soft_end_effector/visual/End_effector_soft.STL"/>
+        </geometry>
+        <material name="soft_material">
+          <color rgba="1 1 1 0.35"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/soft_end_effector/visual/End_effector_soft.STL"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <!-- Rigid main body -->
+    <link name="${prefix}ee_body">
+      <inertial>
+        <origin xyz="-1.876E-05 0.029968 -0.0051099" rpy="0 0 0"/>
+        <mass value="0.12362"/>
+        <inertia ixx="9.47E-05" ixy="-4.3237E-08" ixz="3.8309E-08"
+                 iyy="7.94E-05" iyz="8.2218E-08"
+                 izz="5.1691E-05"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/soft_end_effector/visual/End_effector.STL"/>
+        </geometry>
+        <material name="ee_material">
+          <color rgba="0.7 0.7 0.7 1"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://mycobot_description/meshes/soft_end_effector/visual/End_effector.STL"/>
+        </geometry>
+      </collision>
+    </link>
+
+
+
+
+    <!-- Joint from robot flange to soft tip -->
+    <!-- Connects to flange instead of wrist_3_link to avoid duplicate tool0 -->
+    <joint name="${prefix}ee_mount" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${prefix}soft_tip"/>
+      <!-- R_x(+90°): maps mesh native +Y → flange +Z (outward from face) -->
+      <origin xyz="0.065 -0.03 0" rpy="0 -1.5708 0"/>
+    </joint>
+
+    <!-- Joint connecting soft tip to rigid body -->
+    <joint name="${prefix}ee_internal" type="fixed">
+      <parent link="${prefix}soft_tip"/>
+      <child link="${prefix}ee_body"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- TOOL FRAME - Connect existing tool0 to end of EE -->
+    <!-- The tool0 link is already defined in main xacro, we just connect it to our EE -->
+    <joint name="${prefix}ee_body-tool0" type="fixed">
+      <parent link="${prefix}ee_body"/>
+      <child link="${prefix}tool0"/>
+      <!-- Tip at 80mm along child +Y (=flange +Z); rpy=-90° roll aligns tool0 Z to spray direction -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

@@ -1,0 +1,68 @@
+# Controller configuration for myCobot 320 M5 with Gazebo (UR-compatible joint names)
+# Compatible with spraying_pathways C++ nodes
+# Planning group: ur_manipulator
+
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    # Joint state broadcaster - publishes /joint_states
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # Main arm controller for trajectory execution
+    # This name matches the MoveIt controller configuration
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+# Joint trajectory controller configuration
+# Uses UR-compatible joint naming convention
+arm_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+    # State publishing
+    state_publish_rate: 100.0
+    action_monitor_rate: 20.0
+
+    # Trajectory constraints
+    open_loop_control: false
+    allow_integration_in_goal_trajectories: true
+    allow_nonzero_velocity_at_trajectory_end: true
+
+    # Goal constraints per joint
+    constraints:
+      stopped_velocity_tolerance: 0.1
+      goal_time: 0.0
+      
+      shoulder_pan_joint:
+        trajectory: 0.2
+        goal: 0.1
+      shoulder_lift_joint:
+        trajectory: 0.2
+        goal: 0.1
+      elbow_joint:
+        trajectory: 0.2
+        goal: 0.1
+      wrist_1_joint:
+        trajectory: 0.2
+        goal: 0.1
+      wrist_2_joint:
+        trajectory: 0.2
+        goal: 0.1
+      wrist_3_joint:
+        trajectory: 0.2
+        goal: 0.1
