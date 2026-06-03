@@ -72,19 +72,3 @@ Make sure the serial port has the correct permissions (e.g. `/dev/ttyACM0`):
 sudo chmod 666 /dev/ttyACM0
 ```
 
-**Usage:**
-Once the real robot (or the standalone `spray_valve.launch.py`) is running, you can control the valve from a sourced terminal:
-
-*   **Open the valve:**
-    ```bash
-    ros2 topic pub --once /spray_valve std_msgs/msg/Bool "{data: true}"
-    ```
-*   **Close the valve:**
-    ```bash
-    ros2 topic pub --once /spray_valve std_msgs/msg/Bool "{data: false}"
-    ```
-*   **Toggle the valve state automatically:**
-    ```bash
-    ros2 service call /toggle_spray_valve std_srvs/srv/Trigger
-    ```
-
